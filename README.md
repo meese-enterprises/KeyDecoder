@@ -59,7 +59,7 @@ The authors DO NOT ALLOW any users to sell keys created with the help of this ap
 If you want to protect yourself from having your keys duplicated without your consent (with a picture, or by molding, or more simply by someone asking a locksmith to make a copy), you are invited to apply the same best practices to your keys as you do with your Credit Card or your Password. Just like credit cards and passwords, you must not lend your keys or leave them unattended.
 
 <p align="center" style="font-size:30px">
-<strong>Have Fun, Stay Legal, Hide your keys.</strong>
+  <strong>Have Fun, Stay Legal, Hide your keys.</strong>
 </p>
 
 *****
@@ -77,8 +77,9 @@ If you want to protect yourself from having your keys duplicated without your co
 ### Android
 
 * Download [OpenCV v4.3.0](https://sourceforge.net/projects/opencvlibrary/)
-* Create the `local.properties` file under `android/`, providing the following settings :
-```sdk.dir=<Android SDK path>
+* Create the `local.properties` file under `android/`, providing the following settings:
+```shell
+sdk.dir=<Android SDK path>
 flutter.sdk=<Flutter SDK path>
 flutter.buildMode=release
 flutter.versionName=1.0.0
