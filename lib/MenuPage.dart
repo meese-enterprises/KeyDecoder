@@ -1,382 +1,420 @@
-import 'dart:io';
+import "dart:io";
 
-import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:keydecoder/disclamer_dialog.dart';
-import 'package:keydecoder/utils/utils.dart';
-import 'package:moor_flutter/moor_flutter.dart' as moor;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'ProjectPage.dart';
-import 'projects/model/projects.dart';
-import 'package:provider/provider.dart';
+import "package:flutter/material.dart";
+import "package:flutter_slidable/flutter_slidable.dart";
+import "package:keydecoder/disclamer_dialog.dart";
+import "package:keydecoder/utils/utils.dart";
+import "package:moor_flutter/moor_flutter.dart" as moor;
+import "package:shared_preferences/shared_preferences.dart";
+import "package:url_launcher/url_launcher.dart";
+import "ProjectPage.dart";
+import "projects/model/projects.dart";
+import "package:provider/provider.dart";
 
-import 'projects/projectview.dart';
-import 'tutorial_dialog.dart';
+import "projects/projectview.dart";
+import "tutorial_dialog.dart";
 
 class MenuPage extends StatefulWidget {
-	MenuPage() : super();
+  MenuPage() : super();
 
-	final String title = 'Projects';
+  final String title = "Projects";
 
-	static const routeName = '/menu';
-	static Route<dynamic> route(Object args) {
-		return MaterialPageRoute(
-            builder: (BuildContext context) => MenuPage(),
-        );
-	}
+  static const routeName = "/menu";
+  static Route<dynamic> route(Object args) {
+    return MaterialPageRoute(
+      builder: (BuildContext context) => MenuPage(),
+    );
+  }
 
-	@override
-  	MenuPageState createState() => MenuPageState();
+  @override
+  MenuPageState createState() => MenuPageState();
 }
 
 class MenuPageState extends State<MenuPage> {
+  final pad = 12.0;
 
-	final pad = 12.0;
+  static const List<PopupMenuEntry<int>> _settings = [
+    PopupMenuItem(
+      value: 0,
+      child: Text("Tutorial"),
+    ),
+    PopupMenuItem(
+      value: 1,
+      child: Text("Disclaimer"),
+    ),
+    PopupMenuItem(
+      value: 2,
+      child: Text("FAQ"),
+    ),
+    PopupMenuItem(
+      value: 3,
+      child: Text("License"),
+    ),
+    PopupMenuItem(
+      value: 4,
+      child: Text("About"),
+    ),
+  ];
 
-	static const List<PopupMenuEntry<int>> _settings = [
-		PopupMenuItem(
-			value: 0,
-			child: Text("Tutorial"),
-		),
-		PopupMenuItem(
-			value: 1,
-			child: Text("Disclaimer"),
-		),
-		PopupMenuItem(
-			value: 2,
-			child: Text("FAQ"),
-		),
-		PopupMenuItem(
-			value: 3,
-			child: Text("License"),
-		),
-		PopupMenuItem(
-			value: 4,
-			child: Text("About"),
-		),
-	];
+  void addProject() async {
+    final dao = ProjectsDatabase.dao;
 
-	void addProject() async {
-		final dao = ProjectsDatabase.dao;
+    final nb = (await dao.allProjects).length + 1;
+    final newProject = ProjectCompanion(
+      title: moor.Value("Project #$nb"),
+      description: moor.Value(""),
+    );
 
-		final nb = (await dao.allProjects).length + 1;
-		final newProject = ProjectCompanion(
-			title: moor.Value("Project #$nb"), 
-			description: moor.Value(""),
-		);
-		
-		dao.insertProject(newProject).then((id) async {
-			openProject(await dao.getProjectByID(id));
-		});
-	}
+    dao.insertProject(newProject).then((id) async {
+      openProject(await dao.getProjectByID(id));
+    });
+  }
 
-  	@override
-  	Widget build(BuildContext context) {
-		SharedPreferences.getInstance().then((prefs) async {
-			if (!prefs.containsKey('discaimer_displayed') || !prefs.getBool('discaimer_displayed')) {
-				await _showDisclaimer();
-				prefs.setBool('discaimer_displayed', true);
-				await Future.delayed(Duration(seconds: 1));
-			}
+  @override
+  Widget build(BuildContext context) {
+    SharedPreferences.getInstance().then((prefs) async {
+      if (!prefs.containsKey("discaimer_displayed") ||
+          !prefs.getBool("discaimer_displayed")) {
+        await _showDisclaimer();
+        prefs.setBool("discaimer_displayed", true);
+        await Future.delayed(Duration(seconds: 1));
+      }
 
-			if (!prefs.containsKey('tutorial_displayed') || !prefs.getBool('tutorial_displayed')) {
-				await _showTutorial();
-				prefs.setBool('tutorial_displayed', true);
-			}
-		});
-		return WillPopScope(
-			onWillPop: _onWillPop,
-			child: Scaffold(
-				appBar: AppBar(
-					title: Text(widget.title),
-					actions: [
-						PopupMenuButton<int>(
-							onSelected: choiceSetting,
-							itemBuilder: (context) {
-								return _settings;
-							},
-						)
-					],
-				),
-				body: Column(
-						children: <Widget>[
-							Expanded(
-								child: buildProjectList(context)
-							),
-						],
-					),
-				floatingActionButton: FloatingActionButton(
-					onPressed: addProject,
-					tooltip: 'Add Project',
-					child: const Icon(Icons.add),
-				),
-			),
-		);
-  	}
+      if (!prefs.containsKey("tutorial_displayed") ||
+          !prefs.getBool("tutorial_displayed")) {
+        await _showTutorial();
+        prefs.setBool("tutorial_displayed", true);
+      }
+    });
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+          actions: [
+            PopupMenuButton<int>(
+              onSelected: choiceSetting,
+              itemBuilder: (context) {
+                return _settings;
+              },
+            )
+          ],
+        ),
+        body: Column(
+          children: <Widget>[
+            Expanded(child: buildProjectList(context)),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: addProject,
+          tooltip: "Add Project",
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
 
-	Future<bool> _onWillPop() {
-		enableRotation();
-		return Future.value(true);
-	}
+  Future<bool> _onWillPop() {
+    enableRotation();
+    return Future.value(true);
+  }
 
-	StreamBuilder<List<Project>> buildProjectList(BuildContext context) {
-		final dao = Provider.of<ProjectsDao>(context);
-		return StreamBuilder(
-			stream: dao.watchAll(),
-			builder: (context, AsyncSnapshot<List<Project>> snapshot) {
-				final projects = snapshot.data ?? List.empty();
+  StreamBuilder<List<Project>> buildProjectList(BuildContext context) {
+    final dao = Provider.of<ProjectsDao>(context);
+    return StreamBuilder(
+      stream: dao.watchAll(),
+      builder: (context, AsyncSnapshot<List<Project>> snapshot) {
+        final projects = snapshot.data ?? List.empty();
 
-				return ListView.builder(
-					padding: EdgeInsets.only(bottom: pad),
-					itemCount: projects.length,
-					itemBuilder: (_, index) {
-						final item = projects[index];
-						return buildListItem(item, dao);
-					},
-				);
-			},
-		);
-	}
+        return ListView.builder(
+          padding: EdgeInsets.only(bottom: pad),
+          itemCount: projects.length,
+          itemBuilder: (_, index) {
+            final item = projects[index];
+            return buildListItem(item, dao);
+          },
+        );
+      },
+    );
+  }
 
-	openProject(item) {
-		ScaffoldMessenger.of(context).removeCurrentSnackBar();
-		Navigator.pushNamed(context, ProjectPage.routeName, arguments: item);
-	}
+  openProject(item) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    Navigator.pushNamed(context, ProjectPage.routeName, arguments: item);
+  }
 
-	deleteProject(Project item, ProjectsDao dao) {
-		dao.deleteProject(item);
-		ScaffoldMessenger.of(context).removeCurrentSnackBar();
-		ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller = ScaffoldMessenger.of(context)
-        	.showSnackBar(SnackBar(
-				content: Text("${item.title} deleted"),
-				action: SnackBarAction(
-					label: 'Undo',
-					onPressed: () => dao.insertProject(item)
-				),
-				duration: Duration(seconds: 3),
-			),
-		);
+  deleteProject(Project item, ProjectsDao dao) {
+    dao.deleteProject(item);
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller =
+        ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("${item.title} deleted"),
+        action: SnackBarAction(
+            label: "Undo", onPressed: () => dao.insertProject(item)),
+        duration: Duration(seconds: 3),
+      ),
+    );
 
-		controller.closed.then((SnackBarClosedReason value) {
-			switch (value) {
-				case SnackBarClosedReason.dismiss:
-				case SnackBarClosedReason.swipe:
-				case SnackBarClosedReason.hide:
-				case SnackBarClosedReason.remove:
-				case SnackBarClosedReason.timeout:
-					// confirm deletion
-					try {
-						if (item.pathCroppedPic.isNotEmpty)
-							File(item.pathCroppedPic).deleteSync();
+    controller.closed.then((SnackBarClosedReason value) {
+      switch (value) {
+        case SnackBarClosedReason.dismiss:
+        case SnackBarClosedReason.swipe:
+        case SnackBarClosedReason.hide:
+        case SnackBarClosedReason.remove:
+        case SnackBarClosedReason.timeout:
+          // confirm deletion
+          try {
+            if (item.pathCroppedPic.isNotEmpty)
+              File(item.pathCroppedPic).deleteSync();
 
-						if (item.pathRawPic.isNotEmpty)
-							File(item.pathRawPic).deleteSync();
-					} catch (_){}
-					break;
-				case SnackBarClosedReason.action:
-					// do nothing
-					break;
-			}
-		});
-	}
+            if (item.pathRawPic.isNotEmpty) File(item.pathRawPic).deleteSync();
+          } catch (_) {}
+          break;
+        case SnackBarClosedReason.action:
+          // do nothing
+          break;
+      }
+    });
+  }
 
-	Widget buildListItem(Project item, ProjectsDao dao) {
-		return Padding(
-			padding: EdgeInsets.only(left:pad, top:pad, right:pad),
-			child: InkWell(
-				onTap: () => openProject(item),
-				child: Slidable(
-					key: ValueKey(item.id),
-					actionPane: SlidableDrawerActionPane(),
-					child: ProjectThumbnail(project: item),
-					closeOnScroll: true,
-					actionExtentRatio: 0.0,
-					secondaryActions: [
-						IconSlideAction(
-							caption: 'Delete',
-							color: Colors.red,
-							icon: Icons.delete,
-						),
-					],
-					dismissal: SlidableDismissal(
-						dismissThresholds: { SlideActionType.secondary : 0.5 },
-						child: SlidableDrawerDismissal(),
-						onDismissed: (direction) => deleteProject(item, dao),
-						closeOnCanceled: true,
-					),
-				),
-			),
-		);
-  	}
+  Widget buildListItem(Project item, ProjectsDao dao) {
+    return Padding(
+      padding: EdgeInsets.only(left: pad, top: pad, right: pad),
+      child: InkWell(
+        onTap: () => openProject(item),
+        child: Slidable(
+          key: ValueKey(item.id),
+          actionPane: SlidableDrawerActionPane(),
+          child: ProjectThumbnail(project: item),
+          closeOnScroll: true,
+          actionExtentRatio: 0.0,
+          secondaryActions: [
+            IconSlideAction(
+              caption: "Delete",
+              color: Colors.red,
+              icon: Icons.delete,
+            ),
+          ],
+          dismissal: SlidableDismissal(
+            dismissThresholds: {SlideActionType.secondary: 0.5},
+            child: SlidableDrawerDismissal(),
+            onDismissed: (direction) => deleteProject(item, dao),
+            closeOnCanceled: true,
+          ),
+        ),
+      ),
+    );
+  }
 
-	void choiceSetting(int choice) {
-		switch (choice) {
-			case 0:
-				_showTutorial();
-				break;
-			case 1:
-				_showDisclaimer();
-				break;
-			case 2:
-				_showFAQ();
-				break;
-			case 3:
-				_showLicense();
-				break;
-			case 4:
-				_showAbout();
-				break; 
-		  default:
-		}
-	}
+  void choiceSetting(int choice) {
+    switch (choice) {
+      case 0:
+        _showTutorial();
+        break;
+      case 1:
+        _showDisclaimer();
+        break;
+      case 2:
+        _showFAQ();
+        break;
+      case 3:
+        _showLicense();
+        break;
+      case 4:
+        _showAbout();
+        break;
+      default:
+    }
+  }
 
-	Future _showTutorial() {
-		return showDialog(
-			context: context, 
-			builder: (context) {
-				return TutorialDialog();
-			},
-			barrierDismissible: false	
-		);
-	}
+  Future _showTutorial() {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return TutorialDialog();
+        },
+        barrierDismissible: false);
+  }
 
-	Future _showDisclaimer() {
-		return showDialog(
-			context: context, 
-			builder: (context) {
-				return DisclamerDialog();
-			},
-			barrierDismissible: false	
-		);
-	}
+  Future _showDisclaimer() {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return DisclamerDialog();
+        },
+        barrierDismissible: false);
+  }
 
-	void _showFAQ() {
-		showDialog(
-			context: context, 
-			builder: (context) {
-				return AlertDialog(
-					title: Text("FAQ"),
-					content: SingleChildScrollView(
-						child: Column(
-							children: [
-								Text("What is the purpose of this application?\n", style: TextStyle(
-									fontWeight: FontWeight.bold
-								)),
-								Text("This application is a key decoder tool helping you getting the depths and spaces for a key you own or have legally access to. The decoded data can then be used with the help of a locksmith to obtain a duplicate of the pictured key.\n", textAlign: TextAlign.justify,),
-								Text("What is the intended public for using this app?\n", style: TextStyle(
-									fontWeight: FontWeight.bold
-								)),
-								Text("The KeyDecoder app is built for security professionnals such as Pentesters and other security enthusiasts to be able to decode their own keys, or keys of the location they have a legal contract for.\n", textAlign: TextAlign.justify,),
-								Text("What do you do with my pictures and decoded data?\n", style: TextStyle(
-									fontWeight: FontWeight.bold
-								)),
-								Text("""Nothing. 
+  void _showFAQ() {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("FAQ"),
+            content: SingleChildScrollView(
+              child: Column(children: [
+                Text("What is the purpose of this application?\n",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  "This application is a key decoder tool helping you getting the depths and spaces for a key you own or have legally access to. The decoded data can then be used with the help of a locksmith to obtain a duplicate of the pictured key.\n",
+                  textAlign: TextAlign.justify,
+                ),
+                Text("What is the intended public for using this app?\n",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  "The KeyDecoder app is built for security professionnals such as Pentesters and other security enthusiasts to be able to decode their own keys, or keys of the location they have a legal contract for.\n",
+                  textAlign: TextAlign.justify,
+                ),
+                Text("What do you do with my pictures and decoded data?\n",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  """Nothing.
 We do not transmit the pictures over the network, we do not retrieve any decoded data.
-Everything the user does with the app, is done locally on his/her phone. As a user, you are responsible for making sure that nobody else gets access to your pictures and decoded data.\n""", textAlign: TextAlign.justify,),
-								Text("Is this app helping criminals to copy my keys without my consent?\n", style: TextStyle(
-									fontWeight: FontWeight.bold
-								)),
-								Text("""No. 
+Everything the user does with the app, is done locally on his/her phone. As a user, you are responsible for making sure that nobody else gets access to your pictures and decoded data.\n""",
+                  textAlign: TextAlign.justify,
+                ),
+                Text(
+                    "Is this app helping criminals to copy my keys without my consent?\n",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  """No.
 If you make sure to handle your keys with the care they deserve, no criminal will be able to use this application to copy your keys.
 Same as a Password or a Credit Card, a mechanical Key is a sensitive data that you should not share with anybody, and that you should not leave unattended. Otherwise, someone can easily go to a nearby locksmith, or make a molding duplicate in seconds.
-Additionnaly, the need for an ISO sized card as a dimensionnal reference prevents any decoding using a picture taken "on the fly". A criminal could copy your keys with this app only if you let them do it.\n""", textAlign: TextAlign.justify,),
-								Text("LIMITED WARRANTY\n", style: TextStyle(
-									fontWeight: FontWeight.bold
-								)),
-								Text("""THE PROGRAM IS PROVIDED TO YOU "AS IS," WITHOUT WARRANTY. THERE IS NO WARRANTY FOR THE PROGRAM, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.\n""", textAlign: TextAlign.justify,),
-							]
-						),
-					),
-					actions: [
-						FlatButton(
-							child: Text('Close'),
-							onPressed: () => Navigator.pop(context),
-						)
-					],
-				);
-			},
-			barrierDismissible: false	
-		);
-	}
+Additionnaly, the need for an ISO sized card as a dimensionnal reference prevents any decoding using a picture taken "on the fly". A criminal could copy your keys with this app only if you let them do it.\n""",
+                  textAlign: TextAlign.justify,
+                ),
+                Text("LIMITED WARRANTY\n",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  """THE PROGRAM IS PROVIDED TO YOU "AS IS," WITHOUT WARRANTY. THERE IS NO WARRANTY FOR THE PROGRAM, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.\n""",
+                  textAlign: TextAlign.justify,
+                ),
+              ]),
+            ),
+            actions: [
+              FlatButton(
+                child: Text("Close"),
+                onPressed: () => Navigator.pop(context),
+              )
+            ],
+          );
+        },
+        barrierDismissible: false);
+  }
 
-	void _showAbout() {
-		double txtscale = 0.8;
-		showAboutDialog(
-			context: context,
-			applicationIcon: Image(
-				image: AssetImage('assets/icon.png'),
-				color: null, 
-				width: MediaQuery.of(context).size.width / 8, 
-				height: MediaQuery.of(context).size.width / 8,
-				fit: BoxFit.scaleDown,
-			),
-			applicationVersion: "v1.0",
-			applicationLegalese: "© AT Security SAS",
-			children: [
-				Text("\nApp developped by :", textScaleFactor: txtscale),
-				Text("BEASSE Maxime", textAlign: TextAlign.center, textScaleFactor: txtscale),
-				Center(
-					child: InkWell(
-						onTap: () {
-							canLaunch('https://twitter.com/maxime_beasse').then((canLaunch) => (canLaunch) ? launch('https://twitter.com/maxime_beasse') : null);
-						},
-						child: Text("@maxime_beasse", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline,), textScaleFactor: txtscale)
-					),
-				),
-				Text("\n", textScaleFactor: txtscale/4,),
-				Text("CLEMENT Quentin", textAlign: TextAlign.center, textScaleFactor: txtscale,),
-				Center(
-					child: InkWell(
-						onTap: () {
-							canLaunch('https://twitter.com/0x2f2f').then((canLaunch) => (canLaunch) ? launch('https://twitter.com/0x2f2f') : null);
-						},
-						child: Text("@0x2f2f", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline,), textScaleFactor: txtscale),
-					),
-				),
-				Text("\n\n", textScaleFactor: txtscale/4),
-				InkWell(
-					onTap: () {
-						canLaunch('https://github.com/MaximeBeasse/KeyDecoder').then((canLaunch) => (canLaunch) ? launch('https://github.com/MaximeBeasse/KeyDecoder') : null);
-					},
-					child: Text("GitHub Repository", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline,), textScaleFactor: txtscale),
-				),
-				Text("\n\nIn partnership with FrenchKey ", textScaleFactor: txtscale),
-				Center(
-					child: InkWell(
-						onTap: () {
-							canLaunch('https://twitter.com/frenchkey_fr').then((canLaunch) => (canLaunch) ? launch('https://twitter.com/frenchkey_fr') : null);
-						},
-						child: Text("@FrenchKey_fr", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline,), textScaleFactor: txtscale),
-					),
-				),
-			]
-		);
-	}
+  void _showAbout() {
+    double txtscale = 0.8;
+    showAboutDialog(
+        context: context,
+        applicationIcon: Image(
+          image: AssetImage("assets/icon.png"),
+          color: null,
+          width: MediaQuery.of(context).size.width / 8,
+          height: MediaQuery.of(context).size.width / 8,
+          fit: BoxFit.scaleDown,
+        ),
+        applicationVersion: "v1.0",
+        applicationLegalese: "© AT Security SAS",
+        children: [
+          Text("\nApp developped by :", textScaleFactor: txtscale),
+          Text("BEASSE Maxime",
+              textAlign: TextAlign.center, textScaleFactor: txtscale),
+          Center(
+            child: InkWell(
+                onTap: () {
+                  canLaunch("https://twitter.com/maxime_beasse").then(
+                      (canLaunch) => (canLaunch)
+                          ? launch("https://twitter.com/maxime_beasse")
+                          : null);
+                },
+                child: Text("@maxime_beasse",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    textScaleFactor: txtscale)),
+          ),
+          Text(
+            "\n",
+            textScaleFactor: txtscale / 4,
+          ),
+          Text(
+            "CLEMENT Quentin",
+            textAlign: TextAlign.center,
+            textScaleFactor: txtscale,
+          ),
+          Center(
+            child: InkWell(
+              onTap: () {
+                canLaunch("https://twitter.com/0x2f2f").then((canLaunch) =>
+                    (canLaunch) ? launch("https://twitter.com/0x2f2f") : null);
+              },
+              child: Text("@0x2f2f",
+                  style: TextStyle(
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
+                  textScaleFactor: txtscale),
+            ),
+          ),
+          Text("\n\n", textScaleFactor: txtscale / 4),
+          InkWell(
+            onTap: () {
+              canLaunch("https://github.com/MaximeBeasse/KeyDecoder").then(
+                  (canLaunch) => (canLaunch)
+                      ? launch("https://github.com/MaximeBeasse/KeyDecoder")
+                      : null);
+            },
+            child: Text("GitHub Repository",
+                style: TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                textScaleFactor: txtscale),
+          ),
+          Text("\n\nIn partnership with FrenchKey ", textScaleFactor: txtscale),
+          Center(
+            child: InkWell(
+              onTap: () {
+                canLaunch("https://twitter.com/frenchkey_fr").then(
+                    (canLaunch) => (canLaunch)
+                        ? launch("https://twitter.com/frenchkey_fr")
+                        : null);
+              },
+              child: Text("@FrenchKey_fr",
+                  style: TextStyle(
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
+                  textScaleFactor: txtscale),
+            ),
+          ),
+        ]);
+  }
 
-	void _showLicense() {
-		showDialog(
-			context: context,
-			builder: (context) => AlertDialog(
-				actions: [
-					FlatButton(
-						child: Text('Close'),
-						onPressed: () => Navigator.pop(context),
-					)
-				],
-				content: SingleChildScrollView(
-					child: Text("""TL;DR : 
-You ARE NOT ALLOWED to make money (directly or indirectly) by distributing this application, 
-its source code or a modification of them, or selling keys made with the help of this app. 
+  void _showLicense() {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              actions: [
+                FlatButton(
+                  child: Text("Close"),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
+              content: SingleChildScrollView(child: Text("""TL;DR :
+You ARE NOT ALLOWED to make money (directly or indirectly) by distributing this application,
+its source code or a modification of them, or selling keys made with the help of this app.
 Of course, you ARE NOT ALLOWED to perform any illegal activity using this application.
 
-You ARE ALLOWED to install, use, read, modify and distribute this application and its source code at no fee. 
+You ARE ALLOWED to install, use, read, modify and distribute this application and its source code at no fee.
 You ARE ALLOWED to produce keys for your own use or to perform a pentest audits, both at your own risks.
 
-You MUST give credit to original authors and copyright holders when you share this software or a modification of this software, 
+You MUST give credit to original authors and copyright holders when you share this software or a modification of this software,
 and share it under the same conditions.
 
-If you don't agree, delete it from your device.
+If you don"t agree, delete it from your device.
 
 The logo is under copyright and shall not be used without prior written consent of the copyright holder.
 The only use of the logo authorised is the use for this application and its derivatives as long as they respect the law and ethics.
@@ -417,10 +455,10 @@ those who use the Program to enhance the value of commercial products pay
 for the privilege of doing so.
 
 0. Subject Matter
-This License applies to the application know as "KeyDecoder", 
-an application designed to help decoding a machanical key code using a picture. 
-The "Program", below, refers to such application. The Program is a copyrighted 
-work whose copyright is held by AT Security SAS, located in Lyon, France (the "Licensor"). 
+This License applies to the application know as "KeyDecoder",
+an application designed to help decoding a machanical key code using a picture.
+The "Program", below, refers to such application. The Program is a copyrighted
+work whose copyright is held by AT Security SAS, located in Lyon, France (the "Licensor").
 
 A "work based on the Program" means either the Program or any derivative
 work of the Program, as defined in the United States Copyright Act of 1976,
@@ -440,7 +478,7 @@ with all of the restrictions set forth in this License and provided, further,
 that you distribute an unmodified copy of this License with the Program:
 
 (a)
-You may copy and distribute literal (i.e., verbatim) copies of the Program's
+You may copy and distribute literal (i.e., verbatim) copies of the Program"s
 source code as you receive it throughout the world, in any medium.
 
 (b)
@@ -500,7 +538,7 @@ derived from the Program or any part thereof ("the Work"):
 
 (i)
 If you have modified the Program, you must cause the Work to carry prominent
-notices stating that you have modified the Program's files and the date
+notices stating that you have modified the Program"s files and the date
 of any change. In each source file that you have modified, you must include
 a prominent notice that you have modified the file, including your name,
 your e-mail address (if any), and the date and purpose of the change;
@@ -544,7 +582,7 @@ written instructions for printing and/or displaying the copy of the License
 on the distribution medium;
 
 (vi)
-You may not impose any further restrictions on the recipient's exercise
+You may not impose any further restrictions on the recipient"s exercise
 of the rights granted herein.
 
 If distribution of executable or object code is made by offering the equivalent
@@ -606,9 +644,7 @@ software documentation" respectively and, pursuant to FAR Section 12.212,
 the Government is acquiring the Program and its documentation in accordance
 with the terms of this License.
 
-""")
-				),
-			)
-		);
-	}
+""")),
+            ));
+  }
 }

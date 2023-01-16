@@ -1,9 +1,9 @@
 library gesture_x_detector;
 
-import 'dart:async';
-import 'package:flutter/widgets.dart';
-import 'dart:math' as math;
-import 'package:vector_math/vector_math_64.dart' hide Colors;
+import "dart:async";
+import "package:flutter/widgets.dart";
+import "dart:math" as math;
+import "package:vector_math/vector_math_64.dart" hide Colors;
 
 ///  A widget that detects gestures.
 /// * Supports Tap, DoubleTap, Move(start, update, end), Scale(start, update, end) and Long Press
@@ -12,20 +12,21 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 /// For handle rotate event, please use rotateAngle on onScaleUpdate.
 class XGestureDetector extends StatefulWidget {
   /// Creates a widget that detects gestures.
-  XGestureDetector(
-      {@required this.child,
-      this.onTap,
-      this.onMoveUpdate,
-      this.onMoveEnd,
-      this.onMoveStart,
-      this.onScaleStart,
-      this.onScaleUpdate,
-      this.onScaleEnd,
-      this.onDoubleTap,
-      this.bypassTapEventOnDoubleTap = false,
-      this.doubleTapTimeConsider = 250,
-      this.longPressTimeConsider = 350,
-      this.onLongPress});
+  XGestureDetector({
+    @required this.child,
+    this.onTap,
+    this.onMoveUpdate,
+    this.onMoveEnd,
+    this.onMoveStart,
+    this.onScaleStart,
+    this.onScaleUpdate,
+    this.onScaleEnd,
+    this.onDoubleTap,
+    this.bypassTapEventOnDoubleTap = false,
+    this.doubleTapTimeConsider = 250,
+    this.longPressTimeConsider = 350,
+    this.onLongPress
+  });
 
   /// The widget below this widget in the tree.
   ///
@@ -122,7 +123,7 @@ class _XGestureDetectorState extends State<XGestureDetector> {
       onPointerUp: onPointerUp,
       onPointerMove: onPointerMove,
       onPointerCancel: onPointerUp,
-	  behavior: HitTestBehavior.translucent,
+      behavior: HitTestBehavior.translucent,
     );
   }
 
@@ -309,10 +310,10 @@ class _Touch {
 }
 
 Offset transformOffset(Matrix4 matrix, Offset offset) {
-	return Offset(
-		(matrix[0] * offset.dx) + (matrix[4] * offset.dy) + matrix[12],
-    	(matrix[1] * offset.dx) + (matrix[5] * offset.dy) + matrix[13],
-	);
+  return Offset(
+    (matrix[0] * offset.dx) + (matrix[4] * offset.dy) + matrix[12],
+    (matrix[1] * offset.dx) + (matrix[5] * offset.dy) + matrix[13],
+  );
 }
 
 Offset vect2Offset(Vector2 v) => Offset(v?.x, v?.y);
